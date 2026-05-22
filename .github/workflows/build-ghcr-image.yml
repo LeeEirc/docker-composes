@@ -1,0 +1,90 @@
+name: build image and push to ghcr.io
+
+on:
+  workflow_dispatch:
+    inputs:
+      REPO:
+        description: 'source repository, for example owner/repo'
+        type: string
+        required: true
+        default: 'LeeEirc/docker-composes'
+      BRANCH:
+        description: 'source branch, tag, or commit SHA'
+        type: string
+        default: 'main'
+        required: true
+      CONTEXT:
+        description: 'build context path in the source repository'
+        type: string
+        default: '.'
+        required: true
+      DOCKERFILE:
+        description: 'Dockerfile path in the source repository'
+        type: string
+        default: './Dockerfile'
+        required: true
+      IMAGE_NAME:
+        description: 'GHCR image name; defaults to the source repository name when empty'
+        type: string
+        default: ''
+      PLATFORMS:
+        description: 'platforms'
+        type: string
+        default: 'linux/amd64,linux/arm64'
+      IMAGE_TAG:
+        description: "image tag"
+        type: string
+        default: 'dev'
+        required: true
+      BUILD_ARGS:
+        description: 'optional build args, one KEY=VALUE per line'
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.REPO }}
+          ref: ${{ inputs.BRANCH }}
+          token: ${{ secrets.CHECKOUT_TOKEN || github.token }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare image metadata
+        id: image
+        shell: bash
+        env:
+          SOURCE_REPOSITORY: ${{ inputs.REPO }}
+          IMAGE_NAME_INPUT: ${{ inputs.IMAGE_NAME }}
+        run: |
+          repo_name="${SOURCE_REPOSITORY##*/}"
+          image_name="${IMAGE_NAME_INPUT:-$repo_name}"
+          echo "name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/${image_name,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push multi-arch image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ inputs.CONTEXT }}
+          file: ${{ inputs.DOCKERFILE }}
+          platforms: ${{ inputs.PLATFORMS }}
+          push: true
+          build-args: ${{ inputs.BUILD_ARGS }}
+          tags: ${{ steps.image.outputs.name }}:${{ inputs.IMAGE_TAG }}
