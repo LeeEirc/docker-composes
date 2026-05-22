@@ -15,6 +15,5 @@ services:
     volumes:
       - type: bind
         source: ${CODES_DIR:-${HOME}/codes}
-        target: ${CONTAINER_CODES_DIR:-/opt/codes}
-    working_dir: ${CONTAINER_CODES_DIR:-/opt/codes}
+        target: ${CONTAINER_CODES_DIR:-/workspace/codes}
     restart: unless-stopped
