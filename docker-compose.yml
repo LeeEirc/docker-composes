@@ -1,0 +1,20 @@
+services:
+  dev:
+    build:
+      context: ./base
+      dockerfile: Dockerfile
+    image: ${DEV_IMAGE:-local/dev-env:latest}
+    container_name: ${DEV_CONTAINER_NAME:-dev-env}
+    environment:
+      VNC_PASSWORD: ${VNC_PASSWORD:-changeme}
+      VNC_GEOMETRY: ${VNC_GEOMETRY:-1440x900}
+      VNC_DEPTH: ${VNC_DEPTH:-24}
+    ports:
+      - "${VNC_PORT:-5901}:5901"
+      - "${NOVNC_PORT:-6080}:6080"
+    volumes:
+      - type: bind
+        source: ${CODES_DIR:-${HOME}/codes}
+        target: ${CONTAINER_CODES_DIR:-/opt/codes}
+    working_dir: ${CONTAINER_CODES_DIR:-/opt/codes}
+    restart: unless-stopped
