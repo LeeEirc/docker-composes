@@ -11,7 +11,7 @@ on:
       BRANCH:
         description: 'source branch, tag, or commit SHA'
         type: string
-        default: 'main'
+        default: 'master'
         required: true
       CONTEXT:
         description: 'build context path in the source repository'
