@@ -38,6 +38,7 @@ RUN apt-get update \
         tar \
         tigervnc-common \
         tigervnc-standalone-server \
+        tigervnc-tools \
         unzip \
         websockify \
         x11-xserver-utils \

@@ -4,7 +4,12 @@ set -euo pipefail
 mkdir -p "${HOME}/.vnc"
 
 if [[ -n "${VNC_PASSWORD:-}" ]]; then
-  printf '%s\n' "${VNC_PASSWORD}" | vncpasswd -f > "${HOME}/.vnc/passwd"
+  vncpasswd_cmd="$(command -v vncpasswd || command -v tigervncpasswd || true)"
+  if [[ -z "${vncpasswd_cmd}" ]]; then
+    echo "vncpasswd command not found. Install tigervnc-tools in the image." >&2
+    exit 1
+  fi
+  printf '%s\n' "${VNC_PASSWORD}" | "${vncpasswd_cmd}" -f > "${HOME}/.vnc/passwd"
   chmod 600 "${HOME}/.vnc/passwd"
 fi
 
