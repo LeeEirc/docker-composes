@@ -3,6 +3,7 @@ FROM debian:trixie
 ARG GO_VERSION=1.26.3
 ARG ZIG_VERSION=0.16.0
 ARG NODE_VERSION=24.16.0
+ARG PYTHON_VERSION=3.14.5
 ARG TARGETARCH
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -14,6 +15,9 @@ ENV VNC_GEOMETRY=1440x900
 ENV VNC_DEPTH=24
 ENV VNC_PASSWORD=changeme
 ENV NOVNC_PORT=6080
+ENV UV_MANAGED_PYTHON=1
+ENV UV_PYTHON_INSTALL_DIR=/opt/uv/python
+ENV UV_PYTHON_BIN_DIR=/usr/local/bin
 ENV PATH=/usr/local/go/bin:/go/bin:/opt/zig:/opt/node/bin:${PATH}
 
 RUN apt-get update \
@@ -43,6 +47,15 @@ RUN apt-get update \
         xz-utils \
         zip \
     && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:0.11.16 /uv /uvx /usr/local/bin/
+
+RUN set -eux; \
+    uv python install "${PYTHON_VERSION}" --default --compile-bytecode; \
+    uv --version; \
+    python --version; \
+    python3 --version; \
+    uv cache clean
 
 RUN set -eux; \
     arch="${TARGETARCH:-$(dpkg --print-architecture)}"; \
