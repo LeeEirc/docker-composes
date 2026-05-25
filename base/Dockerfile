@@ -27,6 +27,7 @@ RUN apt-get update \
         ca-certificates \
         cmake \
         curl \
+        dbus \
         dbus-x11 \
         file \
         git \
@@ -48,6 +49,13 @@ RUN apt-get update \
         xz-utils \
         zip \
     && rm -rf /var/lib/apt/lists/*
+
+RUN set -eux; \
+    printf '%s\n' \
+        '#!/usr/bin/env sh' \
+        'exit 1' \
+        > /usr/bin/pm-is-supported; \
+    chmod +x /usr/bin/pm-is-supported
 
 COPY --from=ghcr.io/astral-sh/uv:0.11.16 /uv /uvx /usr/local/bin/
 
@@ -83,6 +91,72 @@ RUN set -eux; \
 COPY start-vnc /usr/local/bin/start-vnc
 
 RUN chmod +x /usr/local/bin/start-vnc
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        autotools-dev \
+        debhelper \
+        dpkg-dev \
+        libasound2-dev \
+        libasan8 \
+        libavcodec-dev \
+        libavformat-dev \
+        libavutil-dev \
+        libcairo2-dev \
+        libcbor-dev \
+        libcups2-dev \
+        libdbus-glib-1-dev \
+        libfaad-dev \
+        libfido2-dev \
+        libfuse3-dev \
+        libgsm1-dev \
+        libjansson-dev \
+        libjpeg-dev \
+        libjson-c-dev \
+        libkrb5-dev \
+        libopus-dev \
+        libpam0g-dev \
+        libpcsclite-dev \
+        libpng-dev \
+        libpulse-dev \
+        libsdl2-2.0-0 \
+        libsdl2-dev \
+        libsdl2-image-dev \
+        libsdl2-ttf-dev \
+        libsoxr-dev \
+        libssl-dev \
+        libswresample-dev \
+        libswscale-dev \
+        libsystemd-dev \
+        libudev-dev \
+        liburiparser-dev \
+        libusb-1.0-0-dev \
+        libv4l-dev \
+        libwayland-dev \
+        libwebkitgtk-6.0-dev \
+        libwebp-dev \
+        libx11-dev \
+        libxcursor-dev \
+        libxdamage-dev \
+        libxext-dev \
+        libxfixes-dev \
+        libxi-dev \
+        libxinerama-dev \
+        libxkbcommon-dev \
+        libxkbfile-dev \
+        libxrandr-dev \
+        libxrender-dev \
+        libxtst-dev \
+        libxv-dev \
+        ninja-build \
+        ocl-icd-dev \
+        ocl-icd-opencl-dev \
+        opencl-c-headers \
+        opencl-headers \
+        opensc-pkcs11 \
+        uuid-dev \
+        zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace
 
