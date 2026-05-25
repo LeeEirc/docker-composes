@@ -42,6 +42,7 @@ RUN apt-get update \
         tigervnc-tools \
         unzip \
         websockify \
+        wget    \
         x11-xserver-utils \
         xauth \
         xfce4 \
@@ -95,8 +96,14 @@ RUN chmod +x /usr/local/bin/start-vnc
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         autotools-dev \
+        ccache \
+        cdbs \
+        clang \
+        clang-format \
+        debuginfod \
         debhelper \
         dpkg-dev \
+        gdb \
         libasound2-dev \
         libasan8 \
         libavcodec-dev \
@@ -148,13 +155,19 @@ RUN apt-get update \
         libxrender-dev \
         libxtst-dev \
         libxv-dev \
+        lldb \
         ninja-build \
         ocl-icd-dev \
         ocl-icd-opencl-dev \
         opencl-c-headers \
         opencl-headers \
         opensc-pkcs11 \
+        pkgconf \
+        strace \
         uuid-dev \
+        valgrind \
+        x11vnc \
+        xvfb \
         zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
