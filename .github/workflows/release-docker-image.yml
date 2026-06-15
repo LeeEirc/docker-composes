@@ -17,8 +17,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Set up crane
-        uses: imjasonh/setup-crane@v0.4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Prepare image metadata
         id: image
@@ -60,7 +60,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          manifest="$(crane manifest "$IMAGE")"
+          manifest="$(docker buildx imagetools inspect --raw "$IMAGE")"
           platforms="$(
             jq -r '
               .manifests[]?
@@ -105,11 +105,12 @@ jobs:
             [[ -n "$platform" ]] || continue
 
             platform_name="${platform//\//-}"
-            asset="release/${REPOSITORY_NAME}-${IMAGE_TAG}-${platform_name}.tar"
+            asset="release/${REPOSITORY_NAME}-${IMAGE_TAG}-${platform_name}.tar.gz"
 
             echo "Downloading $IMAGE for $platform"
-            crane pull --format=tarball --platform="$platform" "$IMAGE" "$asset"
-            gzip -9 "$asset"
+            docker pull --platform="$platform" "$IMAGE"
+            docker image save "$IMAGE" | gzip -9 > "$asset"
+            docker image rm "$IMAGE" >/dev/null 2>&1 || true
           done <<< "$PLATFORMS"
 
       - name: Create or update GitHub Release
