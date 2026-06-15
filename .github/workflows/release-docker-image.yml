@@ -1,0 +1,139 @@
+name: release multi-arch docker image
+
+on:
+  workflow_dispatch:
+    inputs:
+      IMAGE:
+        description: 'public image with an explicit tag, for example guacamole/guacd:1.6.0'
+        type: string
+        required: true
+        default: 'guacamole/guacd:1.6.0'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up crane
+        uses: imjasonh/setup-crane@v0.4
+
+      - name: Prepare image metadata
+        id: image
+        shell: bash
+        env:
+          IMAGE: ${{ inputs.IMAGE }}
+        run: |
+          set -euo pipefail
+
+          image="$IMAGE"
+          image_name="${image##*/}"
+
+          if [[ -z "$image" || "$image" =~ [[:space:]] || "$image" == *@* || "$image_name" != *:* ]]; then
+            echo "IMAGE must include an explicit tag and must not use a digest: $IMAGE" >&2
+            exit 1
+          fi
+
+          repository="${image%:*}"
+          tag="${image_name##*:}"
+          repository_name="${repository##*/}"
+
+          if [[ -z "$repository" || -z "$repository_name" || -z "$tag" ]]; then
+            echo "IMAGE must include a non-empty repository and tag: $IMAGE" >&2
+            exit 1
+          fi
+
+          release_tag="${repository_name}-${tag}"
+
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "repository_name=$repository_name" >> "$GITHUB_OUTPUT"
+          echo "image_tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Discover image platforms
+        id: platforms
+        shell: bash
+        env:
+          IMAGE: ${{ steps.image.outputs.image }}
+        run: |
+          set -euo pipefail
+
+          manifest="$(crane manifest "$IMAGE")"
+          platforms="$(
+            jq -r '
+              .manifests[]?
+              | select(.platform.os != null and .platform.architecture != null)
+              | select(.platform.os != "unknown" and .platform.architecture != "unknown")
+              | [
+                  .platform.os,
+                  .platform.architecture,
+                  (.platform.variant // empty)
+                ]
+              | map(select(length > 0))
+              | join("/")
+            ' <<< "$manifest" | sort -u
+          )"
+
+          if [[ -z "$platforms" ]]; then
+            echo "No runnable platforms found in the image index: $IMAGE" >&2
+            exit 1
+          fi
+
+          {
+            echo "list<<EOF"
+            echo "$platforms"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Discovered platforms:"
+          echo "$platforms"
+
+      - name: Download Docker image tarballs
+        shell: bash
+        env:
+          IMAGE: ${{ steps.image.outputs.image }}
+          REPOSITORY_NAME: ${{ steps.image.outputs.repository_name }}
+          IMAGE_TAG: ${{ steps.image.outputs.image_tag }}
+          PLATFORMS: ${{ steps.platforms.outputs.list }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p release
+          while IFS= read -r platform; do
+            [[ -n "$platform" ]] || continue
+
+            platform_name="${platform//\//-}"
+            asset="release/${REPOSITORY_NAME}-${IMAGE_TAG}-${platform_name}.tar"
+
+            echo "Downloading $IMAGE for $platform"
+            crane pull --format=tarball --platform="$platform" "$IMAGE" "$asset"
+            gzip -9 "$asset"
+          done <<< "$PLATFORMS"
+
+      - name: Create or update GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.image.outputs.release_tag }}
+          IMAGE: ${{ steps.image.outputs.image }}
+        run: |
+          set -euo pipefail
+
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$RELEASE_TAG" \
+              --notes "Docker-loadable platform images for \`$IMAGE\`."
+          else
+            gh release create "$RELEASE_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "$RELEASE_TAG" \
+              --notes "Docker-loadable platform images for \`$IMAGE\`."
+          fi
+
+          gh release upload "$RELEASE_TAG" release/*.tar.gz \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber
