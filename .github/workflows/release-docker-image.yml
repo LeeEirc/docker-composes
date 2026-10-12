@@ -135,6 +135,6 @@ jobs:
               --notes "Docker-loadable platform images for \`$IMAGE\`."
           fi
 
-          gh release upload "$RELEASE_TAG" release/*.tar.gz \
+          gh release upload "$RELEASE_TAG" release/*.tar  \
             --repo "$GITHUB_REPOSITORY" \
             --clobber
