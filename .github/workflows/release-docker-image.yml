@@ -90,7 +90,7 @@ jobs:
           echo "Discovered platforms:"
           echo "$platforms"
 
-      - name: Download Docker image tarballs
+      - name: Download Docker image archives
         shell: bash
         env:
           IMAGE: ${{ steps.image.outputs.image }}
@@ -105,11 +105,12 @@ jobs:
             [[ -n "$platform" ]] || continue
 
             platform_name="${platform//\//-}"
-            asset="release/${REPOSITORY_NAME}-${IMAGE_TAG}-${platform_name}.tar"
+            asset_base="release/${REPOSITORY_NAME}-${IMAGE_TAG}-${platform_name}"
 
             echo "Downloading $IMAGE for $platform"
             docker pull --platform="$platform" "$IMAGE"
-            docker image save "$IMAGE" > "$asset"
+            docker image save "$IMAGE" | gzip -n > "${asset_base}.tar.gz"
+            docker image save "$IMAGE" | zstd -q -T0 > "${asset_base}.tar.zst"
             docker image rm "$IMAGE" >/dev/null 2>&1 || true
           done <<< "$PLATFORMS"
 
@@ -126,15 +127,15 @@ jobs:
             gh release edit "$RELEASE_TAG" \
               --repo "$GITHUB_REPOSITORY" \
               --title "$RELEASE_TAG" \
-              --notes "Docker-loadable platform images for \`$IMAGE\`."
+              --notes "Docker-loadable platform images for \`$IMAGE\` in .tar.gz and .tar.zst formats."
           else
             gh release create "$RELEASE_TAG" \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
               --title "$RELEASE_TAG" \
-              --notes "Docker-loadable platform images for \`$IMAGE\`."
+              --notes "Docker-loadable platform images for \`$IMAGE\` in .tar.gz and .tar.zst formats."
           fi
 
-          gh release upload "$RELEASE_TAG" release/*.tar  \
+          gh release upload "$RELEASE_TAG" release/*.tar.gz release/*.tar.zst \
             --repo "$GITHUB_REPOSITORY" \
             --clobber
