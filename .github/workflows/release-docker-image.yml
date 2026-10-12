@@ -105,11 +105,11 @@ jobs:
             [[ -n "$platform" ]] || continue
 
             platform_name="${platform//\//-}"
-            asset="release/${REPOSITORY_NAME}-${IMAGE_TAG}-${platform_name}.tar.gz"
+            asset="release/${REPOSITORY_NAME}-${IMAGE_TAG}-${platform_name}.tar"
 
             echo "Downloading $IMAGE for $platform"
             docker pull --platform="$platform" "$IMAGE"
-            docker image save "$IMAGE" | gzip -9 > "$asset"
+            docker image save "$IMAGE" > "$asset"
             docker image rm "$IMAGE" >/dev/null 2>&1 || true
           done <<< "$PLATFORMS"
 
