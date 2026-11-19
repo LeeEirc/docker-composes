@@ -109,8 +109,8 @@ jobs:
 
             echo "Downloading $IMAGE for $platform"
             docker pull --platform="$platform" "$IMAGE"
-            docker image save "$IMAGE" | gzip -n > "${asset_base}.tar.gz"
-            docker image save "$IMAGE" | zstd -q -T0 > "${asset_base}.tar.zst"
+            docker image save --platform="$platform" "$IMAGE" | gzip -n > "${asset_base}.tar.gz"
+            docker image save --platform="$platform" "$IMAGE" | zstd -q -T0 > "${asset_base}.tar.zst"
             docker image rm "$IMAGE" >/dev/null 2>&1 || true
           done <<< "$PLATFORMS"
 
